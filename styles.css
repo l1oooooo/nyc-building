@@ -61,14 +61,29 @@ model-viewer {
   width: 100%;
   height: 100%;
   background: transparent;
+  cursor: grab;
+  transition: opacity 200ms ease-in-out;
 }
 
-header {
+model-viewer:active {
+  cursor: grabbing;
+}
+
+#root[data-hero-hidden="true"] model-viewer {
+  opacity: 0;
+}
+
+.caption {
   position: fixed;
-  left: 28px;
-  bottom: 26px;
+  left: 8.75rem;
+  bottom: 1.5rem;
   z-index: 1;
   pointer-events: none;
+  transition: opacity 250ms ease;
+}
+
+#root[data-expanded="true"] .caption {
+  opacity: 0;
 }
 
 .kicker {
@@ -88,11 +103,10 @@ h1 {
   letter-spacing: -0.03em;
 }
 
-#theme {
+.pill {
   position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 1;
+  z-index: 26;
+  bottom: 1.625rem;
   border: 0;
   border-radius: 999px;
   padding: 10px 16px;
@@ -102,9 +116,196 @@ h1 {
   letter-spacing: 0.02em;
   cursor: pointer;
   backdrop-filter: blur(10px);
+  transition: color 200ms ease;
 }
 
-#theme:focus-visible {
+#timeline {
+  left: 1.5rem;
+}
+
+#theme {
+  right: 1.5rem;
+}
+
+#timeline:focus-visible,
+#theme:focus-visible,
+.strip-button:focus-visible,
+.tl-zone:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
+}
+
+.strip-wrap {
+  z-index: 10;
+  background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: fixed;
+  inset: 0;
+  transition: opacity 250ms ease;
+}
+
+#root[data-expanded="true"] .strip-wrap {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 150ms ease;
+}
+
+#root[data-expanded="true"][data-collapsing="true"] .strip-wrap {
+  transition: opacity 250ms ease;
+}
+
+.strip-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.strip,
+.tl-zone {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+#root[data-settled="true"] .strip,
+#root[data-settled="true"] .tl-zone {
+  opacity: 1;
+  transition: opacity 250ms ease;
+}
+
+.strip {
+  width: 100%;
+  overflow: auto hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.strip-track {
+  display: flex;
+  gap: 2rem;
+  width: max-content;
+  margin-inline: auto;
+  padding: 0.5rem max(3rem, calc(50vw - 7.5rem));
+  font-family: system-ui, sans-serif;
+}
+
+.strip-item {
+  --slot: 15rem;
+  width: var(--slot);
+  flex-shrink: 0;
+  margin: 0;
+  text-align: center;
+  scroll-snap-align: center;
+}
+
+.strip-when {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 1.25rem;
+  user-select: none;
+}
+
+.strip-button {
+  cursor: zoom-in;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.strip-button img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  object-position: center bottom;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.strip-place {
+  display: block;
+  margin-top: 0.625rem;
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.strip-friends {
+  display: block;
+  color: var(--muted);
+  font-size: 1.25rem;
+}
+
+.tl-zone {
+  position: absolute;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(34rem, calc(100vw - 6rem));
+  height: 6.5rem;
+  z-index: 1;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.tl-zone:focus-visible {
+  outline: none;
+}
+
+.tl-tick {
+  position: absolute;
+  top: 3.55rem;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--ink);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.tl-date {
+  position: absolute;
+  top: 0.35rem;
+  color: var(--ink);
+  font: 500 1.25rem/1.3 system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  pointer-events: none;
+  transform: translate(-50%, 0);
+}
+
+#flyer {
+  position: fixed;
+  z-index: 24;
+  object-fit: contain;
+  object-position: center bottom;
+  pointer-events: none;
+  transform-origin: center center;
+}
+
+#flyer[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caption,
+  .strip-wrap,
+  .strip,
+  .tl-zone,
+  model-viewer {
+    transition: none;
+  }
 }

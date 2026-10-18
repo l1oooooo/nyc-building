@@ -21,9 +21,10 @@ LINEAR = 9729
 LINEAR_MIPMAP = 9987
 
 
-def write_png(path, width, height, pixels):
+def write_png(path, width, height, pixels, alpha=False):
+    channels = 4 if alpha else 3
     raw = bytearray()
-    row = width * 3
+    row = width * channels
     for y in range(height):
         raw.append(0)
         raw.extend(pixels[y * row : (y + 1) * row])
@@ -34,7 +35,7 @@ def write_png(path, width, height, pixels):
             + data
             + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
         )
-    ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    ihdr = struct.pack(">IIBBBBB", width, height, 8, 6 if alpha else 2, 0, 0, 0)
     png = (
         b"\x89PNG\r\n\x1a\n"
         + chunk(b"IHDR", ihdr)
@@ -501,6 +502,122 @@ def build():
     return prims
 
 
+def build_perry():
+    """A narrow West Village brownstone: stoop, parlor door, three window floors."""
+    prims = {name: Prim() for name in ("Stone", "Glass", "Metal", "Wood", "Roof", "Plaza")}
+    stone = prims["Stone"]
+    glass = prims["Glass"]
+
+    add_box(prims["Plaza"], 0, -0.1, 0, 16, 0.2, 14, 0.2)
+    add_box(stone, 0, 6.4, 0, 7.4, 12.8, 10, 0.48)
+    add_cornice(stone, 12.65, 8.15, 10.7, 0.48)
+    add_box(prims["Roof"], 0, 12.95, -0.3, 6.4, 0.16, 8.8, 0.4)
+
+    for i in range(4):
+        rise = 0.32 * (i + 1)
+        add_box(stone, 0.15, rise / 2, 5.4 + i * 0.38, 2.35, rise, 0.4, 0.48)
+    add_box(stone, 0.15, 0.78, 6.95, 2.7, 1.56, 1.15, 0.48)
+    add_box(prims["Wood"], 0.15, 2.45, 5.08, 1.2, 2.35, 0.1, 1)
+    add_box(prims["Metal"], -1.05, 1.25, 6.35, 0.06, 0.85, 2.15, 2)
+    add_box(prims["Metal"], 1.35, 1.25, 6.35, 0.06, 0.85, 2.15, 2)
+    add_box(prims["Metal"], 0.15, 1.62, 7.4, 2.3, 0.06, 0.06, 2)
+
+    add_window(stone, glass, (-1.85, 5.55, 5), (1.2, 2.25), "z", 1, 0, 0.48)
+    add_window(stone, glass, (2.05, 5.55, 5), (1.2, 2.25), "z", 1, 5, 0.48)
+    for row, y in enumerate((8.15, 10.55)):
+        for col, x in enumerate((-2.15, 0.1, 2.2)):
+            add_window(stone, glass, (x, y, 5), (1.05, 1.65), "z", 1, (col * 4 + row * 7) % 24, 0.48)
+    add_window(stone, glass, (-2.2, 1.2, 5), (0.95, 1.15), "z", 1, 4, 0.48)
+    add_window(stone, glass, (2.25, 1.2, 5), (0.95, 1.15), "z", 1, 19, 0.48)
+
+    window_grid(
+        stone, glass, ("x", 1, -4.2, 4.2, 2.4, 12.0, 3.7),
+        2, 3, lambda c, r: (2, 8, 14, 6, 11, 1)[c + r * 2], 0.48,
+        margin=(0.55, 0.35), win=(1.05, 1.55),
+    )
+    window_grid(
+        stone, glass, ("x", -1, -4.2, 4.2, 2.4, 12.0, -3.7),
+        2, 3, lambda c, r: (15, 3, 9, 4, 12, 7)[c + r * 2], 0.48,
+        margin=(0.55, 0.35), win=(1.05, 1.55),
+    )
+    window_grid(
+        stone, glass, ("z", -1, -3.2, 3.2, 3.2, 11.6, -5),
+        2, 3, lambda c, r: (4, 23, 15, 19, 27, 8)[c + r * 2], 0.48,
+        margin=(0.5, 0.4), win=(0.95, 1.4),
+    )
+    return prims
+
+
+def _canvas(width, height):
+    return bytearray(width * height * 4)
+
+
+def _rect(buf, width, height, x, y, rw, rh, color):
+    x0, y0 = max(0, int(x)), max(0, int(y))
+    x1, y1 = min(width, int(x + rw)), min(height, int(y + rh))
+    pixel = bytes(color)
+    for yy in range(y0, y1):
+        for xx in range(x0, x1):
+            i = (yy * width + xx) * 4
+            buf[i : i + 4] = pixel
+
+
+def _pane(night, lit, warm=False):
+    if night and lit:
+        return (255, 176, 96, 255) if warm else (255, 206, 140, 255)
+    if night:
+        return (24, 22, 26, 255)
+    return (42, 48, 58, 255)
+
+
+def _window_grid(buf, width, height, x, y, cols, rows, cw, ch, gx, gy, night, seed):
+    for row in range(rows):
+        for col in range(cols):
+            lit = (col * 3 + row * 5 + seed) % 5 != 0
+            _rect(
+                buf, width, height,
+                x + col * (cw + gx), y + row * (ch + gy),
+                cw, ch, _pane(night, lit, warm=(col + row) % 2 == 0),
+            )
+
+
+def poster_tower(night):
+    w, h = 360, 520
+    buf = _canvas(w, h)
+    stone = (132, 126, 118, 255) if night else (214, 206, 190, 255)
+    brick = (92, 52, 42, 255) if night else (184, 96, 74, 255)
+    _rect(buf, w, h, 48, 392, 264, 108, brick)
+    _rect(buf, w, h, 78, 168, 204, 228, stone)
+    _rect(buf, w, h, 108, 78, 144, 96, stone)
+    _rect(buf, w, h, 132, 36, 96, 46, stone)
+    _rect(buf, w, h, 176, 8, 8, 30, (70, 66, 60, 255) if night else (120, 112, 100, 255))
+    _window_grid(buf, w, h, 96, 188, 4, 5, 34, 28, 10, 12, night, 1)
+    _window_grid(buf, w, h, 124, 96, 3, 2, 28, 26, 10, 12, night, 2)
+    _window_grid(buf, w, h, 70, 414, 2, 1, 46, 52, 78, 0, night, 0)
+    _rect(buf, w, h, 158, 430, 44, 70, (28, 24, 22, 255))
+    _rect(buf, w, h, 250, 250, 36, 28, (120, 86, 58, 255) if not night else (70, 52, 38, 255))
+    _rect(buf, w, h, 258, 236, 4, 22, (40, 36, 32, 255))
+    _rect(buf, w, h, 274, 236, 4, 22, (40, 36, 32, 255))
+    return w, h, buf
+
+
+def poster_perry(night):
+    w, h = 360, 520
+    buf = _canvas(w, h)
+    stone = (110, 74, 54, 255) if night else (176, 124, 90, 255)
+    _rect(buf, w, h, 78, 168, 204, 312, stone)
+    _rect(buf, w, h, 70, 156, 220, 16, stone)
+    _rect(buf, w, h, 150, 392, 70, 18, stone)
+    _rect(buf, w, h, 156, 410, 58, 18, stone)
+    _rect(buf, w, h, 162, 428, 46, 18, stone)
+    _rect(buf, w, h, 166, 338, 36, 78, (92, 62, 40, 255) if not night else (48, 34, 26, 255))
+    _window_grid(buf, w, h, 108, 196, 3, 2, 32, 40, 16, 18, night, 2)
+    _window_grid(buf, w, h, 96, 318, 1, 1, 36, 48, 0, 0, night, 1)
+    _window_grid(buf, w, h, 214, 318, 1, 1, 36, 48, 0, 0, night, 4)
+    _window_grid(buf, w, h, 104, 430, 2, 1, 28, 28, 96, 0, night, 3)
+    return w, h, buf
+
+
 def pad4(blob):
     return blob + b"\x00" * ((4 - len(blob) % 4) % 4)
 
@@ -522,34 +639,7 @@ def bounds(values, stride):
     return mins, maxs
 
 
-def main():
-    TEX.mkdir(parents=True, exist_ok=True)
-    MODEL.mkdir(parents=True, exist_ok=True)
-
-    images = {
-        "Podium": (brick_texture(False), brick_texture(True)),
-        "Shaft": (
-            ashlar_texture(False, 2, (214, 204, 186), (186, 174, 156)),
-            ashlar_texture(True, 2, (118, 112, 104), (78, 74, 68)),
-        ),
-        "Crown": (
-            ashlar_texture(False, 5, (228, 220, 206), (196, 186, 170)),
-            ashlar_texture(True, 5, (132, 126, 116), (86, 82, 76)),
-        ),
-        "Glass": (glass_atlas(False), glass_atlas(True)),
-        "Metal": (flat_texture((92, 84, 74), seed=2), flat_texture((58, 54, 50), seed=2)),
-        "Wood": (wood_texture(False), wood_texture(True)),
-        "Roof": (flat_texture((62, 66, 62), seed=6), flat_texture((28, 32, 30), seed=6)),
-        "Plaza": (
-            flat_texture((206, 198, 186), seed=8, variation=0.04),
-            flat_texture((48, 46, 44), seed=8, variation=0.04),
-        ),
-    }
-    for name, (day, night) in images.items():
-        write_png(TEX / f"{name.lower()}-day.png", *day)
-        write_png(TEX / f"{name.lower()}-night.png", *night)
-
-    prims = build()
+def export_model(prims, filename, node_name, image_uris):
     names = [name for name, prim in prims.items() if prim.indices]
     blob = b""
     views = []
@@ -588,13 +678,13 @@ def main():
             "indices": base + 3,
             "material": names.index(name),
         })
-        print(f"{name:8} triangles {len(prim.indices) // 3}")
+        print(f"{node_name} {name:8} triangles {len(prim.indices) // 3}")
 
     gltf_images = []
     textures = []
     materials = []
     for index, name in enumerate(names):
-        gltf_images.append({"uri": f"../textures/{name.lower()}-day.png", "mimeType": "image/png"})
+        gltf_images.append({"uri": image_uris[name], "mimeType": "image/png"})
         textures.append({"sampler": 1 if name == "Glass" else 0, "source": index})
         material = {
             "name": name,
@@ -614,8 +704,8 @@ def main():
         "extensionsUsed": ["KHR_materials_unlit"],
         "scene": 0,
         "scenes": [{"nodes": [0]}],
-        "nodes": [{"name": "LispenardTower", "mesh": 0}],
-        "meshes": [{"name": "LispenardTower", "primitives": primitives}],
+        "nodes": [{"name": node_name, "mesh": 0}],
+        "meshes": [{"name": node_name, "primitives": primitives}],
         "materials": materials,
         "textures": textures,
         "images": gltf_images,
@@ -623,13 +713,72 @@ def main():
             {"magFilter": LINEAR, "minFilter": LINEAR_MIPMAP, "wrapS": REPEAT, "wrapT": REPEAT},
             {"magFilter": LINEAR, "minFilter": LINEAR_MIPMAP, "wrapS": CLAMP, "wrapT": CLAMP},
         ],
-        "buffers": [{"uri": "lispenard.bin", "byteLength": len(blob)}],
+        "buffers": [{"uri": f"{filename}.bin", "byteLength": len(blob)}],
         "bufferViews": views,
         "accessors": accessors,
     }
-    (MODEL / "lispenard.gltf").write_text(json.dumps(gltf, indent=2))
-    (MODEL / "lispenard.bin").write_bytes(blob)
-    print(f"buffer {len(blob)} bytes")
+    (MODEL / f"{filename}.gltf").write_text(json.dumps(gltf, indent=2))
+    (MODEL / f"{filename}.bin").write_bytes(blob)
+    print(f"{filename} buffer {len(blob)} bytes")
+
+
+def main():
+    TEX.mkdir(parents=True, exist_ok=True)
+    MODEL.mkdir(parents=True, exist_ok=True)
+
+    images = {
+        "Podium": (brick_texture(False), brick_texture(True)),
+        "Shaft": (
+            ashlar_texture(False, 2, (214, 204, 186), (186, 174, 156)),
+            ashlar_texture(True, 2, (118, 112, 104), (78, 74, 68)),
+        ),
+        "Crown": (
+            ashlar_texture(False, 5, (228, 220, 206), (196, 186, 170)),
+            ashlar_texture(True, 5, (132, 126, 116), (86, 82, 76)),
+        ),
+        "Glass": (glass_atlas(False), glass_atlas(True)),
+        "Metal": (flat_texture((92, 84, 74), seed=2), flat_texture((58, 54, 50), seed=2)),
+        "Wood": (wood_texture(False), wood_texture(True)),
+        "Roof": (flat_texture((62, 66, 62), seed=6), flat_texture((28, 32, 30), seed=6)),
+        "Plaza": (
+            flat_texture((206, 198, 186), seed=8, variation=0.04),
+            flat_texture((48, 46, 44), seed=8, variation=0.04),
+        ),
+    }
+    for name, (day, night) in images.items():
+        write_png(TEX / f"{name.lower()}-day.png", *day)
+        write_png(TEX / f"{name.lower()}-night.png", *night)
+
+    write_png(TEX / "perry-stone-day.png", *ashlar_texture(False, 11, (186, 138, 102), (150, 102, 72)))
+    write_png(TEX / "perry-stone-night.png", *ashlar_texture(True, 11, (112, 76, 56), (74, 50, 38)))
+    for name, painter in (("lispenard", poster_tower), ("perry", poster_perry)):
+        write_png(TEX / f"{name}-poster-day.png", *painter(False), alpha=True)
+        write_png(TEX / f"{name}-poster-night.png", *painter(True), alpha=True)
+
+    shared = {
+        "Glass": "../textures/glass-day.png",
+        "Metal": "../textures/metal-day.png",
+        "Wood": "../textures/wood-day.png",
+        "Roof": "../textures/roof-day.png",
+        "Plaza": "../textures/plaza-day.png",
+    }
+    export_model(
+        build(),
+        "lispenard",
+        "LispenardTower",
+        {
+            "Podium": "../textures/podium-day.png",
+            "Shaft": "../textures/shaft-day.png",
+            "Crown": "../textures/crown-day.png",
+            **shared,
+        },
+    )
+    export_model(
+        build_perry(),
+        "perry",
+        "PerryStreet",
+        {"Stone": "../textures/perry-stone-day.png", **shared},
+    )
 
 
 if __name__ == "__main__":

@@ -3,38 +3,59 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lispenard Tower</title>
+    <title>New York</title>
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.0.0/dist/model-viewer.min.js"></script>
   </head>
   <body>
-    <model-viewer
-      id="building"
-      src="models/lispenard.gltf"
-      alt="Clay model of a New York setback tower"
-      camera-controls
-      disable-zoom
-      disable-pan
-      touch-action="pan-y"
-      interaction-prompt="none"
-      camera-orbit="32deg 78deg 96m"
-      min-camera-orbit="-180deg 64deg 96m"
-      max-camera-orbit="180deg 98deg 96m"
-      camera-target="0m 18m 0m"
-      field-of-view="30deg"
-      min-field-of-view="30deg"
-      max-field-of-view="30deg"
-      environment-image="neutral"
-      exposure="1.05"
-      shadow-intensity="0.55"
-      shadow-softness="0.9"
-      tone-mapping="neutral"
-    ></model-viewer>
-    <header>
-      <p class="kicker">New York</p>
-      <h1>Lispenard Tower</h1>
-    </header>
-    <button id="theme" type="button" aria-label="Toggle day or night">Night</button>
+    <div id="root">
+      <model-viewer
+        id="building"
+        src="models/lispenard.gltf"
+        alt="Clay model of Lispenard Tower"
+        camera-controls
+        disable-zoom
+        disable-pan
+        touch-action="pan-y"
+        interaction-prompt="none"
+        camera-orbit="32deg 78deg 96m"
+        min-camera-orbit="-180deg 64deg 96m"
+        max-camera-orbit="180deg 98deg 96m"
+        camera-target="0m 18m 0m"
+        field-of-view="30deg"
+        min-field-of-view="30deg"
+        max-field-of-view="30deg"
+        environment-image="neutral"
+        exposure="1.05"
+        shadow-intensity="0.55"
+        shadow-softness="0.9"
+        tone-mapping="neutral"
+      ></model-viewer>
+      <header class="caption">
+        <p class="kicker">New York</p>
+        <h1 id="place">Lispenard Tower</h1>
+      </header>
+      <button id="timeline" class="pill" type="button" aria-expanded="false">Timeline</button>
+      <button id="theme" class="pill" type="button" aria-label="Toggle light or dark mode">Night</button>
+      <div id="strip-wrap" class="strip-wrap" inert>
+        <div class="strip-stage">
+          <div id="strip" class="strip">
+            <div id="track" class="strip-track"></div>
+          </div>
+        </div>
+        <div
+          id="picker"
+          class="tl-zone"
+          role="slider"
+          tabindex="0"
+          aria-label="Choose a building"
+          aria-valuemin="1"
+          aria-valuemax="2"
+          aria-valuenow="2"
+        ></div>
+      </div>
+    </div>
+    <img id="flyer" alt="" hidden />
     <script type="module" src="main.js"></script>
   </body>
 </html>
